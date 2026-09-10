@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Info,
   AlertOctagon,
+  Download,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import SymptomAnalysis from "../patient-dashboard/SymptomAnalysis";
 import ActivePatientHeader from "./ActivePatientHeader";
 import ProfileManagement from "../patient-dashboard/ProfileManagement";
 import SystemPerformance from "./SystemPerformance";
+import HealthcareAnalytics from "./HealthcareAnalytics";
 import {
   AreaChart,
   Area,
@@ -132,7 +134,6 @@ export default function DoctorDashboard({
     height: 175,
   });
 
-  // Dedicated "View Advisory" Modal state
   const [advisoryModal, setAdvisoryModal] = useState<{
     open: boolean;
     patient: Patient | null;
@@ -144,6 +145,46 @@ export default function DoctorDashboard({
     report: null,
     reportIdx: null,
   });
+
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadPDF = async (patientId: string, report: any, idx: number) => {
+    setIsDownloading(true);
+    const storedUserStr = localStorage.getItem("user");
+    let token = "";
+    if (storedUserStr) {
+      token = JSON.parse(storedUserStr).token;
+    }
+
+    try {
+      toast.info("Generating PDF report...", { id: "pdf-gen" });
+      const res = await fetch(`${API_URL}/api/reports/${patientId}/${idx}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `MedAssist_Report_${report.date?.replace(/\//g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully", { id: "pdf-gen" });
+    } catch (err) {
+      toast.error("Unable to generate the report. Please try again.", { id: "pdf-gen" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     fetchPatients();
@@ -460,6 +501,29 @@ export default function DoctorDashboard({
         </span>
       </div>
 
+      {/* Global Patient Selector */}
+      <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <label htmlFor="global-patient-select" className="text-sm font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+          Active Patient:
+        </label>
+        <select
+          id="global-patient-select"
+          className="flex-1 h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+          value={selectedPatient?._id || ""}
+          onChange={(e) => {
+            const patient = patients.find(p => p._id === e.target.value);
+            setSelectedPatient(patient || null);
+          }}
+        >
+          <option value="">-- Select a patient --</option>
+          {patients.map(p => (
+            <option key={p._id} value={p._id}>
+              {p.name} ({p.email})
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Active patient overview header context if selected */}
       {selectedPatient && (
         <ActivePatientHeader
@@ -467,6 +531,9 @@ export default function DoctorDashboard({
           onChangePatient={() => setSelectedPatient(null)}
         />
       )}
+
+      {/* Render Analytics Tab */}
+      {activeTab === "analytics" && <HealthcareAnalytics onOpenAdvisory={handleOpenAdvisory} />}
 
       {/* Render Tab 1: Patient Files */}
       {activeTab === "dashboard" && (
@@ -1787,16 +1854,34 @@ export default function DoctorDashboard({
                   {advisoryModal.patient.sex}) • Date: {advisoryModal.report.date}
                 </CardDescription>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  setAdvisoryModal({ open: false, patient: null, report: null, reportIdx: null })
-                }
-                className="h-8 w-8 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {advisoryModal.reportIdx !== null && (
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm h-8"
+                    onClick={() =>
+                      handleDownloadPDF(
+                        advisoryModal.patient!._id,
+                        advisoryModal.report,
+                        advisoryModal.reportIdx!,
+                      )
+                    }
+                    disabled={isDownloading}
+                  >
+                    <Download className="h-4 w-4 mr-2" /> Download PDF
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    setAdvisoryModal({ open: false, patient: null, report: null, reportIdx: null })
+                  }
+                  className="h-8 w-8 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
 
             {/* Modal Body */}

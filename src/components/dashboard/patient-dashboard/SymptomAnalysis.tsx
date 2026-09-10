@@ -69,6 +69,21 @@ const AVAILABLE_SYMPTOMS: Symptom[] = [
   { id: "itching", name: "Itching", category: "Dermatology", icon: AlertCircle },
 ];
 
+const DATASET_SYMPTOMS = [
+  'chest pain', 'emphysema', 'inflammation in bursa', 'muscle aches', 'pain in the back or hips', 'erectile dysfunction', 'inflammation in the joints', 'changes in appetite', 'aerophobia', 'sneezing', 'discharge from the penis or vagina', 'itching', 'high blood pressure', 'repetitive behaviors', 'fatigue', 'pain in the lower back or side', 'persistent cough', 'sadness', 'abnormal pap test results', 'wheezing', 'rash', 'memory problems', 'heart disease', 'pain in the lower right abdomen', 'cough', 'inflamed skin', 'runny or stuffy nose', 'hypothyroidism', 'vomiting', 'changes in bowel', 'jaundice', 'abdominal pain', 'congestion', 'red', 'hyperthyroidism', 'redness', 'incontinence', 'red eyes', 'pink eye', 'lightheadedness', 'unexplained heat intolerance', 'trouble seeing in one eye', 'hydrophobia', 'itchy', 'mouth', 'itchy eyes', 'stiffness in the joints', 'chills', 'change in bowel habits', 'difficulty speaking', 'headache', 'pain or burning when urinating', 'inflammation in the eye', 'widespread pain', 'seizures', 'tremors', 'painful rash that follows nerve path', 'energy levels', 'difficulty swallowing', 'hoarseness', 'twisted veins', 'pain in the upper right abdomen', 'chest tightness', 'slow movement', 'coughing up blood', 'tenderness in the affected area', 'abdominal cramps', 'coughing', 'swollen', 'bloody stool', 'death', 'bladder habits', 'swollen lymph nodes', 'changes in urination', 'coordination', 'difficulty with balance', 'shortness of breath', 'numbness on one side of the body', 'difficulty urinating', 'narrowing of the stool', 'blood in the urine', 'throat', 'itchy nose', 'tingling in the arms or legs', 'sensitivity to cold', 'watery stools', 'tingling at the bite site', 'difficulty getting', 'blurred vision', 'excessive worry', 'dizziness', 'numbness', 'fear', 'hopelessness', 'memory loss', 'sore throat', 'rough growths on the skin', 'blood in the stool', 'cancer', 'unexplained weight loss', 'sweating', 'difficulty breathing', 'conjunctivitis', 'mucus production', 'confusion', 'tenderness', 'nausea', 'bloating', 'restricted interests', 'inflammation of the liver', 'chronic bronchitis', 'pain', 'severe headache', 'physical dependence on alcohol', 'withdrawal symptoms', 'pain during sex', 'loss of interest in activities', 'abnormal vaginal bleeding', 'elevated body temperature', 'pain in the lower abdomen', 'tolerance to alcohol', 'weight loss', 'runny nose', 'constipation', 'burning', 'watery eyes', 'stiffness', 'impaired judgment', 'lump', 'urgency to urinate', 'pale skin', 'stiff neck', 'sleep', 'indigestion', 'liver damage', 'extreme mood swings', 'cuts that are slow to heal', 'sudden weakness', 'frequent urination', 'blood in the sputum', 'swelling', 'unexplained bleeding or discharge', 'diarrhea', 'palate', 'fever', 'loose', 'fainting', 'difficulty with social interaction', 'decreased kidney function', 'difficulty thinking', 'sensitivity to light', 'lump in the neck', 'raised', 'warmth', 'painful urination', 'pain in the upper abdomen', 'changes in personality or behavior', 'increased thirst', 'night sweats', 'cough that does not go away'
+];
+
+DATASET_SYMPTOMS.forEach(s => {
+  if (!AVAILABLE_SYMPTOMS.find(ex => ex.name.toLowerCase() === s.toLowerCase() || ex.id === s.replace(/\s+/g, "_"))) {
+    AVAILABLE_SYMPTOMS.push({
+      id: s.replace(/\s+/g, "_"),
+      name: s.charAt(0).toUpperCase() + s.slice(1),
+      category: "General",
+      icon: AlertCircle
+    });
+  }
+});
+
 function HeartIcon(props: any) {
   return (
     <svg

@@ -25,6 +25,19 @@ interface ProfileProps {
 }
 
 export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
+  const [isDoctor, setIsDoctor] = useState(false);
+
+  useEffect(() => {
+    const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
+    if (storedUserStr) {
+      try {
+        const parsed = JSON.parse(storedUserStr);
+        setIsDoctor(parsed.role === "doctor");
+      } catch (e) {
+        setIsDoctor(false);
+      }
+    }
+  }, []);
   const [formData, setFormData] = useState({
     name: user.name || "",
     email: user.email || "",
@@ -300,8 +313,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-name"
                       value={formData.name}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("name", e.target.value)}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 focus:ring-0 focus:outline-none transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 focus:ring-0 focus:outline-none transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -332,8 +346,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-phone"
                       value={formData.phone}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -348,8 +363,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <select
                       id="edit-sex"
                       value={formData.sex}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("sex", e.target.value)}
-                      className="w-full h-12 px-3.5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300 focus:border-slate-350 focus-visible:outline-none focus-visible:ring-0 transition-colors"
+                      className="w-full h-12 px-3.5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300 focus:border-slate-350 focus-visible:outline-none focus-visible:ring-0 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <option value="male">Male</option>
                       <option value="female">Female</option>
@@ -368,8 +384,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                       id="edit-age"
                       type="number"
                       value={formData.age}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("age", Number(e.target.value))}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -392,8 +409,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <select
                       id="edit-blood"
                       value={formData.bloodType}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("bloodType", e.target.value)}
-                      className="w-full h-12 px-3.5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300 focus:border-slate-350 focus-visible:outline-none focus-visible:ring-0 transition-colors"
+                      className="w-full h-12 px-3.5 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-sm text-slate-700 dark:text-slate-300 focus:border-slate-350 focus-visible:outline-none focus-visible:ring-0 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                       <option value="A+">A+</option>
                       <option value="A-">A-</option>
@@ -417,8 +435,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                       id="edit-weight"
                       type="number"
                       value={formData.weight}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("weight", Number(e.target.value))}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -434,8 +453,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                       id="edit-height"
                       type="number"
                       value={formData.height}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("height", Number(e.target.value))}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       required
                     />
                   </div>
@@ -453,10 +473,11 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-allergies"
                       value={allergiesText}
+                      disabled={isDoctor}
                       onChange={(e) => setAllergiesText(e.target.value)}
                       onBlur={(e) => handleCommaInputBlur("allergies", e.target.value)}
                       placeholder="e.g. Peanuts, Penicillin (separated by commas)"
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     />
                     {formData.allergies.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
@@ -483,10 +504,11 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-conditions"
                       value={conditionsText}
+                      disabled={isDoctor}
                       onChange={(e) => setConditionsText(e.target.value)}
                       onBlur={(e) => handleCommaInputBlur("chronicConditions", e.target.value)}
                       placeholder="e.g. Asthma, Hypertension (separated by commas)"
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     />
                     {formData.chronicConditions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
@@ -513,10 +535,11 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-medications"
                       value={medicationsText}
+                      disabled={isDoctor}
                       onChange={(e) => setMedicationsText(e.target.value)}
                       onBlur={(e) => handleCommaInputBlur("medications", e.target.value)}
                       placeholder="e.g. Albuterol, Metformin (separated by commas)"
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                     />
                     {formData.medications.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
@@ -554,8 +577,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-emergency-name"
                       value={formData.emergencyContactName}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("emergencyContactName", e.target.value)}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       placeholder="Full Name"
                     />
                   </div>
@@ -570,10 +594,11 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-emergency-rel"
                       value={formData.emergencyContactRelationship}
+                      disabled={isDoctor}
                       onChange={(e) =>
                         handleInputChange("emergencyContactRelationship", e.target.value)
                       }
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       placeholder="e.g. Spouse, Parent, Sibling"
                     />
                   </div>
@@ -588,8 +613,9 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <Input
                       id="edit-emergency-phone"
                       value={formData.emergencyContactPhone}
+                      disabled={isDoctor}
                       onChange={(e) => handleInputChange("emergencyContactPhone", e.target.value)}
-                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors"
+                      className="rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 h-12 text-sm focus:border-slate-350 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                       placeholder="Phone Number"
                     />
                   </div>
@@ -603,19 +629,26 @@ export default function ProfileManagement({ user, onUpdate }: ProfileProps) {
                     <CheckCircle2 className="h-4 w-4" /> Profile updated successfully
                   </span>
                 )}
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="h-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold px-6 shadow-apple flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer text-xs"
-                >
-                  {saving ? (
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white dark:border-slate-900 border-t-transparent" />
-                  ) : (
-                    <>
-                      <Save className="h-4.5 w-4.5" /> Save Changes
-                    </>
-                  )}
-                </Button>
+                {(() => {
+                  if (!isDoctor) {
+                    return (
+                      <Button
+                        type="submit"
+                        disabled={saving}
+                        className="h-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold px-6 shadow-apple flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer text-xs"
+                      >
+                        {saving ? (
+                          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white dark:border-slate-900 border-t-transparent" />
+                        ) : (
+                          <>
+                            <Save className="h-4.5 w-4.5" /> Save Changes
+                          </>
+                        )}
+                      </Button>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </form>
           </CardContent>

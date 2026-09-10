@@ -12,8 +12,15 @@ if not MONGO_URI:
     sys.exit(1)
 
 try:
-    # Initialize MongoClient
-    client = MongoClient(MONGO_URI)
+    # Initialize MongoClient with robust settings for Atlas
+    client = MongoClient(
+        MONGO_URI,
+        tlsAllowInvalidCertificates=True, # Often resolves WinError 10053 TLS drop issues on Windows
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=45000,
+        maxIdleTimeMS=45000 # Close connections before load balancer drops them
+    )
     
     # Extract database name from URI, default to 'medassist' if not specified
     # Typical URI: mongodb://.../dbname?options

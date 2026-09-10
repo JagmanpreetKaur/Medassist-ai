@@ -206,12 +206,28 @@ async def predict_symptom(req: PredictionRequest, current_user: dict = Depends(g
     # Check emergency state
     is_emergency = recs.get("isEmergency", False) or risk_score > 75
     
+    # Handle Unpredictable/Unreadable Data
+    # If no core symptoms are identified AND primary probability is low, or if the model's top confidence is extremely low
+    if (fever == 0 and cough == 0 and fatigue == 0 and difficulty_breathing == 0 and len(req.symptoms) > 0) or primary_prob < 15:
+        primary_disease = "Unpredictable Data"
+        primary_prob = 0
+        risk_score = 0
+        risk_cat = "Unknown Risk"
+        recs["urgencyLevel"] = "unknown"
+        recs["urgencyLabel"] = "Unrecognized Pattern"
+        recs["confidenceTier"] = "Data is not predictable"
+        recs["uncertaintyNote"] = "The provided symptoms do not match any known predictable patterns in the database. The data is not predictable."
+        is_emergency = False
+        notes_text = "AI Diagnostic Report: Data is not predictable. Insufficient or unrecognized symptoms provided."
+    else:
+        notes_text = f"AI Diagnostic Report: Primary indication is {primary_disease} (Confidence: {primary_prob}%). Evaluated as {risk_cat} (Risk Index: {risk_score}%)."
+    
     # Return unified, structured assessment response
     return {
         "date": datetime.now().strftime("%m/%d/%Y"),
         "type": "Health Report",
         "condition": primary_disease,
-        "notes": f"AI Diagnostic Report: Primary indication is {primary_disease} (Confidence: {primary_prob}%). Evaluated as {risk_cat} (Risk Index: {risk_score}%).",
+        "notes": notes_text,
         "details": {
             "symptoms": extracted_symptoms,
             "duration": req.duration,
