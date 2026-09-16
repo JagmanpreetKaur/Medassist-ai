@@ -470,10 +470,9 @@ export default function DashboardPage() {
                 {activeTab === "symptoms" && (
                   <SymptomAnalysis user={user} onUpdate={handleProfileUpdate} />
                 )}
-                 {activeTab === "reports" && (
+                {activeTab === "reports" && (
                   <HealthReports user={user} onUpdate={handleProfileUpdate} />
-                )
-                
+                )}
                 {activeTab === "trends" && <PatientTrends user={user} />}
               </>
             )}
