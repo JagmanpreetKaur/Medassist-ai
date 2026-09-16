@@ -15,6 +15,39 @@ interface MedicalHistoryProps {
   onUpdate: (updatedUser: UserData) => void;
 }
 
+const parseJSDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const cleanStr = dateStr.split("T")[0].trim();
+  const parts = cleanStr.includes("/") ? cleanStr.split("/") : cleanStr.split("-");
+  if (parts.length === 3) {
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      if (parts[0].length === 4) {
+        return new Date(p0, p1 - 1, p2);
+      } else if (parts[2].length === 4) {
+        return new Date(p2, p0 - 1, p1);
+      }
+    }
+  }
+  const parsed = Date.parse(dateStr);
+  return isNaN(parsed) ? new Date() : new Date(parsed);
+};
+
+const formatDate = (dateStr: string) => {
+  try {
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    return parseJSDate(dateStr).toLocaleDateString("en-US", options);
+  } catch {
+    return dateStr;
+  }
+};
+
 export default function MedicalHistory({ user, onUpdate }: MedicalHistoryProps) {
   const [newDate, setNewDate] = useState("");
   const [newType, setNewType] = useState("Diagnosis");
@@ -218,7 +251,7 @@ export default function MedicalHistory({ user, onUpdate }: MedicalHistoryProps) 
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-500 font-mono bg-slate-100 dark:bg-slate-855 px-2 py-0.5 rounded-lg border border-slate-200/25">
-                          {item.date}
+                          {formatDate(item.date)}
                         </span>
                         <span
                           className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
