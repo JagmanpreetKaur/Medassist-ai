@@ -29,16 +29,35 @@ const COLORS = ["#3b82f6", "#10b981", "#6366f1", "#f59e0b", "#64748b"];
 
 const parseJSDate = (dateStr: string): Date => {
   if (!dateStr) return new Date(0);
-  const parts = dateStr.includes("/") ? dateStr.split("/") : dateStr.split("-");
+  const cleanStr = dateStr.split("T")[0].trim();
+  const parts = cleanStr.includes("/") ? cleanStr.split("/") : cleanStr.split("-");
   if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    } else if (parts[2].length === 4) {
-      return new Date(parseInt(parts[2], 10), parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      if (parts[0].length === 4) {
+        return new Date(p0, p1 - 1, p2);
+      } else if (parts[2].length === 4) {
+        return new Date(p2, p0 - 1, p1);
+      }
     }
   }
   const parsed = Date.parse(dateStr);
   return isNaN(parsed) ? new Date(0) : new Date(parsed);
+};
+
+const formatDate = (dateStr: string) => {
+  try {
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    return parseJSDate(dateStr).toLocaleDateString("en-US", options);
+  } catch {
+    return dateStr;
+  }
 };
 
 export default function PatientTrends({ user }: PatientTrendsProps) {
@@ -262,7 +281,7 @@ export default function PatientTrends({ user }: PatientTrendsProps) {
                       className="hover:bg-slate-50/70 dark:hover:bg-slate-850/30 transition-all"
                     >
                       <td className="px-5 py-4 text-xs font-semibold text-slate-550 font-mono">
-                        {report.date}
+                        {formatDate(report.date)}
                       </td>
                       <td className="px-5 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">
                         {report.condition}
