@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
 import { useState } from "react";
 import { UserData } from "@/app/dashboard/page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +15,7 @@ import {
   ShieldAlert,
   Brain,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/config";
@@ -34,15 +32,88 @@ import { Separator } from "@/components/ui/separator";
 
 interface ReportsProps {
   user: UserData;
+  onUpdate?: (updatedUser: UserData) => void;
 }
 
-export default function HealthReports({ user }: ReportsProps) {
+const parseJSDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const cleanStr = dateStr.split("T")[0].trim();
+  const parts = cleanStr.includes("/") ? cleanStr.split("/") : cleanStr.split("-");
+  if (parts.length === 3) {
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      if (parts[0].length === 4) {
+        return new Date(p0, p1 - 1, p2);
+      } else if (parts[2].length === 4) {
+        return new Date(p2, p0 - 1, p1);
+      }
+    }
+  }
+  const parsed = Date.parse(dateStr);
+  return isNaN(parsed) ? new Date() : new Date(parsed);
+};
+
+const formatDate = (dateStr: string) => {
+  try {
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    return parseJSDate(dateStr).toLocaleDateString("en-US", options);
+  } catch {
+    return dateStr;
+  }
+};
+
+export default function HealthReports({ user, onUpdate }: ReportsProps) {
   const [selectedReport, setSelectedReport] = useState<{ report: any; idx: number } | null>(null);
+  const [reportToDelete, setReportToDelete] = useState<{ report: any; idxInHistory: number } | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const reports = (user.medicalHistory || []).filter(
-    (item) => item.type === "Diagnosis" || item.details !== undefined,
-  );
+  // Map reports with their exact array index in user.medicalHistory
+  const reportsWithIndices = (user.medicalHistory || [])
+    .map((report, originalIdx) => ({ report, originalIdx }))
+    .filter(({ report }) => report.type === "Diagnosis" || report.details !== undefined);
+
+  const handleDeleteReport = async (idxInHistory: number) => {
+    try {
+      const storedUserStr = localStorage.getItem("user");
+      if (!storedUserStr) return;
+      const parsedUser = JSON.parse(storedUserStr);
+      const token = parsedUser.token;
+
+      const updatedHistory = (user.medicalHistory || []).filter((_, idx) => idx !== idxInHistory);
+
+      const response = await fetch(`${API_URL}/api/auth/me`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ medicalHistory: updatedHistory }),
+      });
+
+      if (response.ok) {
+        const updatedData = await response.json();
+        const newLocalStorageUser = { ...parsedUser, ...updatedData };
+        localStorage.setItem("user", JSON.stringify(newLocalStorageUser));
+        if (onUpdate) onUpdate(updatedData);
+        toast.success("Health report deleted successfully.");
+        if (selectedReport && selectedReport.idx === idxInHistory) {
+          setSelectedReport(null);
+        }
+        setReportToDelete(null);
+      } else {
+        toast.error("Failed to delete report.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error deleting report.");
+    }
+  };
 
   const handleDownloadPDF = async (report: any, idx: number) => {
     setIsDownloading(true);
@@ -95,26 +166,26 @@ export default function HealthReports({ user }: ReportsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
-          {reports.length === 0 ? (
+          {reportsWithIndices.length === 0 ? (
             <div className="py-12 text-center text-xs text-slate-400 italic">
               No diagnostic reports logged yet. Run a symptom analysis to generate your first
               report.
             </div>
           ) : (
             <div className="space-y-4">
-              {reports.map((report, idx) => {
+              {reportsWithIndices.map(({ report, originalIdx }, mapIdx) => {
                 const isHighRisk = report.details?.riskCat === "High Risk";
                 const isModRisk = report.details?.riskCat === "Moderate Risk";
 
                 return (
                   <div
-                    key={idx}
+                    key={originalIdx}
                     className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 p-5 shadow-sm transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
                   >
                     <div className="space-y-2 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-bold text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200/25">
-                          {report.date}
+                          {formatDate(report.date)}
                         </span>
                         {report.details?.riskCat && (
                           <span
@@ -164,7 +235,7 @@ export default function HealthReports({ user }: ReportsProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedReport({ report, idx })}
+                        onClick={() => setSelectedReport({ report, idx: mapIdx })}
                         className="rounded-xl text-xs font-semibold px-3 py-1.5 h-8 cursor-pointer flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
                       >
                         <Eye className="h-3.5 w-3.5" /> View Report
@@ -172,11 +243,19 @@ export default function HealthReports({ user }: ReportsProps) {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleDownloadPDF(report, idx)}
+                        onClick={() => handleDownloadPDF(report, mapIdx)}
                         disabled={isDownloading}
                         className="rounded-xl text-xs font-semibold px-3 py-1.5 h-8 cursor-pointer flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
                       >
                         <Download className="h-3.5 w-3.5" /> Download PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReportToDelete({ report, idxInHistory: originalIdx })}
+                        className="rounded-xl text-xs font-semibold px-3 py-1.5 h-8 cursor-pointer flex items-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 border-rose-200/60 dark:border-rose-900/30"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
                       </Button>
                     </div>
                   </div>
@@ -554,6 +633,42 @@ export default function HealthReports({ user }: ReportsProps) {
                 );
               })()}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!reportToDelete} onOpenChange={(open) => !open && setReportToDelete(null)}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-apple shadow-2xl rounded-2xl p-6 space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
+              <AlertTriangle className="h-5 w-5" /> Delete Health Report
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1 leading-relaxed">
+              Are you sure you want to delete the diagnostic report for{" "}
+              <strong className="text-slate-700 dark:text-slate-300">
+                {reportToDelete?.report?.condition || "this report"}
+              </strong>
+              ? This action will remove it permanently from your health records.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReportToDelete(null)}
+              className="rounded-xl text-xs font-semibold px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => reportToDelete && handleDeleteReport(reportToDelete.idxInHistory)}
+              className="rounded-xl text-xs font-semibold px-4 cursor-pointer bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+            >
+              Delete Report
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
