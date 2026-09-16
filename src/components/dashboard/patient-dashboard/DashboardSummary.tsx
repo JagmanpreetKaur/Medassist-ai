@@ -35,12 +35,18 @@ interface SummaryProps {
 
 const parseJSDate = (dateStr: string): Date => {
   if (!dateStr) return new Date();
-  const parts = dateStr.includes("/") ? dateStr.split("/") : dateStr.split("-");
+  const cleanStr = dateStr.split("T")[0].trim();
+  const parts = cleanStr.includes("/") ? cleanStr.split("/") : cleanStr.split("-");
   if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    } else if (parts[2].length === 4) {
-      return new Date(parseInt(parts[2], 10), parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+      if (parts[0].length === 4) {
+        return new Date(p0, p1 - 1, p2);
+      } else if (parts[2].length === 4) {
+        return new Date(p2, p0 - 1, p1);
+      }
     }
   }
   const parsed = Date.parse(dateStr);
@@ -50,9 +56,16 @@ const parseJSDate = (dateStr: string): Date => {
 export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
   // Extract AI diagnostic reports from medical history
   const historyList = user.medicalHistory || [];
-  const diagnosticReports = historyList.filter(
-    (item) => item.details && item.details.riskScore !== undefined,
+  
+  // Sort history chronologically descending (latest first)
+  const sortedHistory = [...historyList].sort(
+    (a, b) => parseJSDate(b.date).getTime() - parseJSDate(a.date).getTime()
   );
+
+  const diagnosticReports = sortedHistory.filter(
+    (item) => item.details && (item.details.riskScore !== undefined || item.details.primaryProb !== undefined),
+  );
+
   const latestAssessment = diagnosticReports[0] || null;
 
   // Time of day greeting
@@ -94,16 +107,20 @@ export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
     }
   };
 
-  // Vitals replacement: MedAssist-specific clinical metric cards (excluding Health Score)
-  const riskLevel = latestAssessment?.details?.riskCat || "Low Risk";
+  // Dynamic clinical metric cards as per user dashboard data
+  const riskLevel = latestAssessment?.details?.riskCat || "No Risk Data";
   const isHighRisk = riskLevel.toLowerCase().includes("high");
   const isModRisk = riskLevel.toLowerCase().includes("moderate");
+
+  const avgMatch = diagnosticReports.length > 0
+    ? Math.round(diagnosticReports.reduce((acc, r) => acc + (r.details?.primaryProb || 0), 0) / diagnosticReports.length)
+    : 0;
 
   const clinicalMetrics = [
     {
       title: "Health Risk",
-      value: latestAssessment ? latestAssessment.details.riskCat : "Low",
-      subtext: "Based on your latest assessment",
+      value: latestAssessment ? latestAssessment.details.riskCat : "No Assessment",
+      subtext: latestAssessment ? "Based on latest assessment" : "Run symptom analysis",
       icon: isHighRisk ? ShieldAlert : isModRisk ? AlertTriangle : ShieldCheck,
       color: isHighRisk
         ? "bg-rose-500/10 text-rose-500"
@@ -131,9 +148,9 @@ export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
       gradient: "from-blue-500/[0.04] to-blue-500/[0.00] hover:bg-blue-500/[0.02]",
     },
     {
-      title: "Assessment Status",
-      value: latestAssessment ? "Stable" : "Inactive",
-      subtext: latestAssessment ? "No immediate concerns" : "Start symptom analysis",
+      title: "Total Assessments",
+      value: `${diagnosticReports.length} ${diagnosticReports.length === 1 ? 'Report' : 'Reports'}`,
+      subtext: diagnosticReports.length > 0 ? `Avg AI Match: ${avgMatch}%` : "No assessments run",
       icon: Activity,
       color: "bg-indigo-500/10 text-indigo-500",
       textColor: "text-indigo-600 dark:text-indigo-455",
@@ -141,34 +158,23 @@ export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
     },
   ];
 
-  // Assessment Trend Chart Data
-  // If we have history points, map them; otherwise use the specified clean 7-day trend
-  const baseTrendData = [
-    { day: "Mon", score: 72 },
-    { day: "Tue", score: 75 },
-    { day: "Wed", score: 78 },
-    { day: "Thu", score: 74 },
-    { day: "Fri", score: 82 },
-    { day: "Sat", score: 80 },
-    { day: "Sun", score: 82 },
-  ];
+  // Assessment Trend Chart Data derived dynamically from user's diagnostic reports
+  const trendReports = [...diagnosticReports]
+    .sort((a, b) => parseJSDate(a.date).getTime() - parseJSDate(b.date).getTime())
+    .slice(-7); // Take latest 7 assessments chronologically
 
-  const chartData =
-    diagnosticReports.length >= 3
-      ? [...diagnosticReports]
-          .slice(0, 7)
-          .reverse()
-          .map((item, idx) => {
-            const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-            return {
-              day: days[idx % 7] || formatDate(item.date),
-              score: item.details?.primaryProb || 80,
-            };
-          })
-      : baseTrendData;
+  const chartData = trendReports.map((item) => {
+    const d = parseJSDate(item.date);
+    const dayLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return {
+      day: dayLabel,
+      score: item.details?.primaryProb || item.details?.riskScore || 80,
+      condition: item.condition,
+    };
+  });
 
-  // Build compact activity records
-  const recentActivities = historyList.slice(0, 4).map((item) => {
+  // Build compact activity records from actual medical history
+  const recentActivities = sortedHistory.slice(0, 4).map((item) => {
     let desc = "Medical record updated";
     if (item.type === "Diagnosis" || item.details !== undefined) {
       desc = `Symptom assessment completed (${item.condition})`;
@@ -442,60 +448,75 @@ export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[240px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="4 4"
-                      vertical={false}
-                      stroke="rgba(0, 0, 0, 0.03)"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      stroke="#94a3b8"
-                      fontSize={11}
-                      fontWeight={600}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      fontSize={11}
-                      fontWeight={600}
-                      tickLine={false}
-                      axisLine={false}
-                      domain={[50, 100]}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.9)",
-                        backdropFilter: "blur(8px)",
-                        borderColor: "rgba(0, 0, 0, 0.05)",
-                        borderRadius: "16px",
-                        color: "#1e293b",
-                        fontSize: "12px",
-                        fontWeight: 650,
-                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="score"
-                      name="Assessment Score"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#colorScore)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {chartData.length > 0 ? (
+                <div className="h-[240px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="4 4"
+                        vertical={false}
+                        stroke="rgba(0, 0, 0, 0.03)"
+                      />
+                      <XAxis
+                        dataKey="day"
+                        stroke="#94a3b8"
+                        fontSize={11}
+                        fontWeight={600}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="#94a3b8"
+                        fontSize={11}
+                        fontWeight={600}
+                        tickLine={false}
+                        axisLine={false}
+                        domain={[50, 100]}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(255, 255, 255, 0.9)",
+                          backdropFilter: "blur(8px)",
+                          borderColor: "rgba(0, 0, 0, 0.05)",
+                          borderRadius: "16px",
+                          color: "#1e293b",
+                          fontSize: "12px",
+                          fontWeight: 650,
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.03)",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="score"
+                        name="AI Match Score"
+                        stroke="#3b82f6"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorScore)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[240px] w-full flex flex-col items-center justify-center text-center space-y-3 p-4">
+                  <Activity className="h-8 w-8 text-slate-300 dark:text-slate-700" />
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    No diagnostic assessment data logged yet. Perform a symptom analysis to track your health trends.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab && setActiveTab("symptoms")}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                  >
+                    Start Symptom Analysis &rarr;
+                  </button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -672,18 +693,22 @@ export default function DashboardSummary({ user, setActiveTab }: SummaryProps) {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-4">
-                {activitiesToShow.map((activity, idx) => (
-                  <div key={idx} className="flex gap-4 items-start text-xs">
-                    <span className="font-bold text-slate-400 shrink-0 min-w-[50px]">
-                      {activity.dateText}
-                    </span>
-                    <div className="flex-1 space-y-0.5">
-                      <p className="font-semibold text-slate-700 dark:text-slate-350">
-                        {activity.description}
-                      </p>
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity, idx) => (
+                    <div key={idx} className="flex gap-4 items-start text-xs">
+                      <span className="font-bold text-slate-400 shrink-0 min-w-[50px]">
+                        {activity.dateText}
+                      </span>
+                      <div className="flex-1 space-y-0.5">
+                        <p className="font-semibold text-slate-700 dark:text-slate-350">
+                          {activity.description}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No recent health activity logged yet.</p>
+                )}
               </div>
               <button
                 onClick={() => setActiveTab && setActiveTab("medical-history")}
